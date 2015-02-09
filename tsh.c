@@ -173,6 +173,8 @@ int main(int argc, char **argv)
 */
 void eval(char *cmdline) 
 {
+    int bg; //should the process run in the background or foreground
+        
     return;
 }
 
@@ -239,6 +241,12 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
+    if (!strcmp(argv[0], "quit")) {
+        exit(0);
+    }
+    if (!strcmp(argv[0], "&")) { //run in background(?)
+        return 1;
+    }
     return 0;     /* not a builtin command */
 }
 
