@@ -173,15 +173,10 @@ int main(int argc, char **argv)
 */
 void eval(char *cmdline) 
 {
-    int bg; //should the process run in the background or foreground
     char *argv[MAXARGS]; 
-    char buf[MAXLINE];
-
-    strcpy(buf, cmdline);
-    bg = parseline(buf, argv);
-    
-    if (cmdline[0] == NULL) {
-        return; /* Ignore empty lines */
+    int bg = parseline(cmdline, argv); //should the process run in the background or foreground
+    if (builtin_cmd(argv) == 0) {
+        return;
     }
     return;
 }
@@ -252,7 +247,7 @@ int builtin_cmd(char **argv)
     if (!strcmp(argv[0], "quit")) { // quit tiny shell
         exit(0);
     }
-    if (!strcmp(argv[0], "&")) { //run in background(?)
+    if (!strcmp(argv[0], "&")) { //run in foreground
         return 1;
     }
     if (!strcmp(argv[0], "jobs")) { //list jobs
@@ -307,6 +302,16 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
+    int pid = fgpid(jobs); 
+    //int jid = pid2jid(pid); // Get job ID running in foreground
+    
+    if (pid != 0) {
+        kill(-pid, SIGINT);
+        if (sig < 0) {
+            deletejob(jobs, pid);
+        }
+    }
+    
     return;
 }
 
