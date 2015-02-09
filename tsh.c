@@ -175,7 +175,12 @@ void eval(char *cmdline)
 {
     char *argv[MAXARGS]; 
     int bg = parseline(cmdline, argv); //should the process run in the background or foreground
-    if (builtin_cmd(argv) == 0) {
+    
+    if (builtin_cmd(argv) == 0) { // Not a builtin_cmd
+        if(fork() == 0) { // In the child
+            execvp(argv[0], argv);
+            printf("Command not found");
+        }
         return;
     }
     return;
@@ -246,9 +251,6 @@ int builtin_cmd(char **argv)
 {
     if (!strcmp(argv[0], "quit")) { // quit tiny shell
         exit(0);
-    }
-    if (!strcmp(argv[0], "&")) { //run in foreground
-        return 1;
     }
     if (!strcmp(argv[0], "jobs")) { //list jobs
         listjobs(jobs);
