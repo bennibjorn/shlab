@@ -247,7 +247,7 @@ int builtin_cmd(char **argv)
     if (!strcmp(argv[0], "&")) { //run in background(?)
         return 1;
     }
-    return 0;     /* not a builtin command */
+    return 0;     /*  not a builtin command */
 }
 
 /* 
