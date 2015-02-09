@@ -174,7 +174,15 @@ int main(int argc, char **argv)
 void eval(char *cmdline) 
 {
     int bg; //should the process run in the background or foreground
-        
+    char *argv[MAXARGS]; 
+    char buf[MAXLINE];
+
+    strcpy(buf, cmdline);
+    bg = parseline(buf, argv);
+    
+    if (cmdline[0] == NULL) {
+        return; /* Ignore empty lines */
+    }
     return;
 }
 
@@ -241,10 +249,17 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
-    if (!strcmp(argv[0], "quit")) {
+    if (!strcmp(argv[0], "quit")) { // quit tiny shell
         exit(0);
     }
     if (!strcmp(argv[0], "&")) { //run in background(?)
+        return 1;
+    }
+    if (!strcmp(argv[0], "jobs")) { //list jobs
+        listjobs(jobs);
+    }
+    if (!strcmp("bg", argv[0]) || !(strcmp("fg", argv[0]))) {
+        do_bgfg(argv);
         return 1;
     }
     return 0;     /*  not a builtin command */
@@ -263,6 +278,9 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
+    while (fgpid(jobs) == pid) {
+        sleep(1);
+    }
     return;
 }
 
