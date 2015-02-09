@@ -179,7 +179,7 @@ void eval(char *cmdline)
     if (builtin_cmd(argv) == 0) { // Not a builtin_cmd
         if(fork() == 0) { // In the child
             execvp(argv[0], argv);
-            printf("Command not found");
+            printf("Command not found/n");
         }
         return;
     }
@@ -294,7 +294,7 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
-    return;
+    waitpid(sig, &status, 0);
 }
 
 /* 
