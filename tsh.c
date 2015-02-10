@@ -101,7 +101,6 @@ int main(int argc, char **argv)
     char c;
     char cmdline[MAXLINE];
     int emit_prompt = 1; /* emit prompt (default) */
-    int status;
 
     /* Redirect stderr to stdout (so that driver will get all output
      * on the pipe connected to stdout) */
@@ -177,8 +176,8 @@ void eval(char *cmdline)
     char *argv[MAXARGS]; 
     int bg = parseline(cmdline, argv); //should the process run in the background or foreground
     pid_t pid;
-    struct job_t *jobs;
-    int state;
+    struct job_t *jobs; // = null?
+    int state = FG;
 
     if(bg == 0) {           // Set state
         state = FG;
@@ -186,11 +185,16 @@ void eval(char *cmdline)
         state = BG;
     }
 
+    if(argv[0] == NULL) {
+        return;             // Ignore ENTER
+    }
+
     if (builtin_cmd(argv) == 0) { // Not a builtin_cmd
         if((pid = fork()) == 0) { // In the child
-            execvp(argv[0], argv);
-            printf("Command not found\n");
-            exit(0);
+            if(execvp(argv[0], argv) < 0) {
+                printf("%s: Command not found\n", argv[0]);
+                exit(0);
+            }
         }
         addjob(jobs, pid, state, cmdline);
         if(bg == 0) {   // Foreground command
@@ -312,8 +316,11 @@ void waitfg(pid_t pid)
 void sigchld_handler(int sig) 
 {
     int status;
-    pid_t pid = waitpid(sig, &status, 0);
-    deletejob(jobs, pid);
+    pid_t pid;
+
+    while(pid = waitpid(-1, &status, 0)) {
+        deletejob(jobs, pid);
+    }  
 }
 
 /* 
