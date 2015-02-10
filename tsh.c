@@ -276,6 +276,7 @@ int builtin_cmd(char **argv)
     }
     if (!strcmp(argv[0], "jobs")) { //list jobs
         listjobs(jobs);
+        return 1;
     }
     if (!strcmp("bg", argv[0]) || !(strcmp("fg", argv[0]))) {
         do_bgfg(argv);
@@ -322,9 +323,9 @@ void sigchld_handler(int sig)
     while((pid = waitpid(fgpid(jobs), &status, WNOHANG|WUNTRACED)) > 0) {
         //deletejob(jobs, pid);
         if (WIFSTOPPED(status)){
-            sigtstp_handler(20);
+            sigtstp_handler(20); //signal 20 = SIGTSTP
         } else if (WIFSIGNALED(status)){
-            sigint_handler(-2);
+            sigint_handler(-2); //signal -2 terminates from keyboard
         } else if (WIFEXITED(status)){
             deletejob(jobs, pid);
         } 
@@ -339,15 +340,15 @@ void sigchld_handler(int sig)
 void sigint_handler(int sig) 
 {
     int pid = fgpid(jobs); 
-    //int jid = pid2jid(pid); // Get job ID running in foreground
+    int jid = pid2jid(pid); // Get job ID running in foreground
     
     if (pid != 0) {
-        kill(-pid, SIGINT);
-        if (sig < 0) {
+        kill(pid, SIGINT);
+        if (sig < 0) { // delete job if negative sig
+            printf("Job [%d] (%d) terminated by signal %d\n", jid, pid, -sig); 
             deletejob(jobs, pid);
         }
     }
-    
     return;
 }
 
