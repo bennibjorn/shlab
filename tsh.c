@@ -176,11 +176,27 @@ void eval(char *cmdline)
 {
     char *argv[MAXARGS]; 
     int bg = parseline(cmdline, argv); //should the process run in the background or foreground
-    
+    pid_t pid;
+    struct job_t *jobs;
+    int state;
+
+    if(bg == 0) {           // Set state
+        state = FG;
+    } else if(bg == 1) {
+        state = BG;
+    }
+
     if (builtin_cmd(argv) == 0) { // Not a builtin_cmd
-        if(fork() == 0) { // In the child
+        if((pid = fork()) == 0) { // In the child
             execvp(argv[0], argv);
-            printf("Command not found/n");
+            printf("Command not found\n");
+            exit(0);
+        }
+        addjob(jobs, pid, state, cmdline);
+        if(bg == 0) {   // Foreground command
+            waitfg(pid);
+        } else {        // Background command
+            printf("Background command");   //TODO
         }
         return;
     }
@@ -296,7 +312,8 @@ void waitfg(pid_t pid)
 void sigchld_handler(int sig) 
 {
     int status;
-    waitpid(sig, &status, 0);
+    pid_t pid = waitpid(sig, &status, 0);
+    deletejob(jobs, pid);
 }
 
 /* 
