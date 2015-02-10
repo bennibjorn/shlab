@@ -176,7 +176,7 @@ void eval(char *cmdline)
     char *argv[MAXARGS]; 
     int bg = parseline(cmdline, argv); //should the process run in the background or foreground
     pid_t pid;
-    struct job_t *jobs; // = null?
+    struct job_t *job; // = null?
     int state = FG;
 
     if(bg == 0) {           // Set state
@@ -189,18 +189,19 @@ void eval(char *cmdline)
         return;             // Ignore ENTER
     }
 
-    if (builtin_cmd(argv) == 0) { // Not a builtin_cmd
+    if (!builtin_cmd(argv)) { // Not a builtin_cmd
         if((pid = fork()) == 0) { // In the child
-            if(execvp(argv[0], argv) < 0) {
-                printf("%s: Command not found\n", argv[0]);
+            execvp(argv[0], argv);
+            printf("%s: Command not found\n", argv[0]);
                 exit(0);
-            }
+            
         }
         addjob(jobs, pid, state, cmdline);
-        if(bg == 0) {   // Foreground command
+        if(state == FG) {   // Foreground command
             waitfg(pid);
         } else {        // Background command
-            printf("Background command");   //TODO
+            job = getjobpid(jobs, pid);
+            printf("[%d] (%d) %s", job->jid, job->pid, cmdline);
         }
         return;
     }
@@ -318,8 +319,15 @@ void sigchld_handler(int sig)
     int status;
     pid_t pid;
 
-    while(pid = waitpid(-1, &status, 0)) {
-        deletejob(jobs, pid);
+    while((pid = waitpid(fgpid(jobs), &status, WNOHANG|WUNTRACED)) > 0) {
+        //deletejob(jobs, pid);
+        if (WIFSTOPPED(status)){
+            sigtstp_handler(20);
+        } else if (WIFSIGNALED(status)){
+            sigint_handler(-2);
+        } else if (WIFEXITED(status)){
+            deletejob(jobs, pid);
+        } 
     }  
 }
 
@@ -350,6 +358,14 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+    int pid = fgpid(jobs);
+    int jid = pid2jid(pid);
+    
+    if (pid != 0) {
+        printf("Job [%d] (%d) Stopped by signal %d\n", jid, pid, sig);
+        getjobpid(jobs, pid)->state = ST;
+        kill(-pid, SIGTSTP); 
+    }
     return;
 }
 
