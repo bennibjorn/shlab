@@ -291,7 +291,15 @@ int builtin_cmd(char **argv)
  * do_bgfg - Execute the builtin bg and fg commands
  */
 void do_bgfg(char **argv) 
-{
+{   
+    //If ID doesn't exit
+    
+    //If ID given is a JID
+    
+    //If ID given is a PID
+    
+    //determine if bg or fg and change state
+    
     return;
 }
 
