@@ -179,27 +179,29 @@ void eval(char *cmdline)
     struct job_t *job; // = null?
     int state = FG;
 
-    if(bg == 0) {           // Set state
+    if(bg == 0) {                   // Set state
         state = FG;
     } else if(bg == 1) {
         state = BG;
     }
 
     if(argv[0] == NULL) {
-        return;             // Ignore ENTER
+        return;                     // Ignore ENTER
     }
 
-    if (!builtin_cmd(argv)) { // Not a builtin_cmd
-        if((pid = fork()) == 0) { // In the child
-            execvp(argv[0], argv);
-            printf("%s: Command not found\n", argv[0]);
+    if (!builtin_cmd(argv)) {       // Not a builtin_cmd
+        if((pid = fork()) == 0) {   // In the child
+            if(execvp(argv[0], argv) < 0) {
+                printf("%s: Command not found\n", argv[0]);
                 exit(0);
-            
+            }
+        } else if(pid < 0) {
+            printf("Error in fork()");
         }
         addjob(jobs, pid, state, cmdline);
-        if(state == FG) {   // Foreground command
+        if(state == FG) {           // Foreground command
             waitfg(pid);
-        } else {        // Background command
+        } else {                    // Background command
             job = getjobpid(jobs, pid);
             printf("[%d] (%d) %s", job->jid, job->pid, cmdline);
         }
