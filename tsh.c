@@ -175,6 +175,10 @@ void eval(char *cmdline)
 {
     char *argv[MAXARGS]; 
     int bg = parseline(cmdline, argv); //should the process run in the background or foreground
+    pid_t pid = 0;
+    struct jobs_t *jobs = NULL;
+    int state = FG
+
     if (builtin_cmd(argv) == 0) {
         return;
     }
