@@ -367,7 +367,6 @@ void sigtstp_handler(int sig)
     if (pid != 0) {
         printf("Job [%d] (%d) Stopped by signal %d\n", jid, pid, sig);
         getjobpid(jobs, pid)->state = ST;
-        kill(-pid, SIGTSTP); 
     }
     return;
 }
