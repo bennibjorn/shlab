@@ -386,6 +386,10 @@ void sigchld_handler(int sig)
             deletejob(jobs, pid);
         } 
     }  
+
+    if (pid < 0 && errno != ECHILD) {
+        printf("waitpid error: %s\n", strerror(errno));
+    }
 }
 
 /* 
@@ -399,7 +403,7 @@ void sigint_handler(int sig)
     int jid = pid2jid(pid); // Get job ID running in foreground
     
     if (pid != 0) {
-        kill(pid, SIGINT);
+        kill(-pid, SIGINT);
         if (sig < 0) { // delete job if negative sig
             printf("Job [%d] (%d) terminated by signal %d\n", jid, pid, -sig); 
             deletejob(jobs, pid);
@@ -421,6 +425,7 @@ void sigtstp_handler(int sig)
     if (pid != 0) {
         printf("Job [%d] (%d) stopped by signal %d\n", jid, pid, sig);
         getjobpid(jobs, pid)->state = ST;
+        //kill(-pid, SIGTSTP); //looks like it fucks everything up
     }
     return;
 }
