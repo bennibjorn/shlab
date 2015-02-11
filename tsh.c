@@ -280,7 +280,7 @@ int builtin_cmd(char **argv)
         listjobs(jobs);
         return 1;
     }
-    if (!strcmp("bg", argv[0]) || !(strcmp("fg", argv[0]))) {
+    if (!strcmp("bg", argv[0]) || (!strcmp("fg", argv[0]))) {
         do_bgfg(argv);
         return 1;
     }
@@ -291,15 +291,61 @@ int builtin_cmd(char **argv)
  * do_bgfg - Execute the builtin bg and fg commands
  */
 void do_bgfg(char **argv) 
-{   
-    //If ID doesn't exit
+{ //memmove (s, s+1, strlen(s+1))
+    //If command is invalid
+    if (argv[1] == NULL) {
+        printf("%s command requires PID or %%jobid\n", argv[0]);
+        return;
+    }
     
-    //If ID given is a JID
-    
-    //If ID given is a PID
+    int myPID = 0;
+    int myJID = 0;
+
+    if (*argv[1] == '%') { // if ID given is JID
+        int inputJID = atoi(argv[1]+1); // get user input from command line
+
+        if (inputJID == 0) { //if nothing comes after bg or fg ..
+            printf("%s command requires PID or %%jobid argument\n", argv[0]);
+            return;
+        }
+        else if (getjobjid(jobs, inputJID) == NULL) { //if JID given doesn't exist
+            printf("%%%d No such job\n", inputJID);
+            return;
+        }
+        else { // input is correct and JID exists
+            //want to change JID to bg or fg, set myJID to ID given
+            myJID = inputJID;
+        }
+    } else if (isdigit(*argv[1])) { // else if input is a PID
+        int inputPID = atoi(argv[1]);
+        if (getjobpid(jobs, inputPID) == NULL) { //if PID given doesn't exist
+            printf("[%d] No such process\n", inputPID);
+            return;
+        } else { // PID exists, set myPID to ID given
+            myPID = inputPID;
+        }
+    } else { //if input is something else
+        printf("%s: argument must be a PID or %%jobid\n", argv[0]);
+        return;
+    }
+    // useful stuff for later
+    struct job_t *theJob; //for referencing the job later on
+    if (myPID != 0) { //input is PID
+        theJob = getjobpid(jobs, myPID);
+    } else { // input is JID
+        theJob = getjobjid(jobs ,myJID);
+    }
     
     //determine if bg or fg and change state
-    
+    if (!strcmp(argv[0], "bg")) {
+        theJob->state = BG; // send to background
+        kill(theJob->pid, SIGCONT); // and continue
+        printf("[%d] (%d) %s", theJob->jid, theJob->pid, theJob->cmdline);
+    } else if (!strcmp(argv[0], "fg")) {
+        theJob->state = FG;
+        kill(theJob->pid, SIGCONT); // send continue signal
+        waitfg(theJob->pid); // wait for the job to finish before returning
+    }
     return;
 }
 
@@ -373,7 +419,7 @@ void sigtstp_handler(int sig)
     int jid = pid2jid(pid);
     
     if (pid != 0) {
-        printf("Job [%d] (%d) Stopped by signal %d\n", jid, pid, sig);
+        printf("Job [%d] (%d) stopped by signal %d\n", jid, pid, sig);
         getjobpid(jobs, pid)->state = ST;
     }
     return;
