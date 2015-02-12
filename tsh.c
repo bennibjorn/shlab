@@ -178,6 +178,11 @@ void eval(char *cmdline)
     pid_t pid;
     struct job_t *job; // = null?
     int state = FG;
+    sigset_t mask;
+    
+    // setup for block/unblock
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGCHLD);
 
     if(bg == 0) {                   // Set state
         state = FG;
@@ -190,6 +195,9 @@ void eval(char *cmdline)
     }
 
     if (!builtin_cmd(argv)) {       // Not a builtin_cmd
+        
+        sigprocmask(SIG_BLOCK, &mask, 0); // block child
+        
         if((pid = fork()) == 0) {   // In the child
             if(execvp(argv[0], argv) < 0) {
                 printf("%s: Command not found\n", argv[0]);
@@ -199,6 +207,10 @@ void eval(char *cmdline)
             printf("Error in fork()");
         }
         addjob(jobs, pid, state, cmdline);
+        
+        // unblock child
+        sigprocmask(SIG_UNBLOCK, &mask, 0);
+        
         if(state == FG) {           // Foreground command
             waitfg(pid);
         } else {                    // Background command
