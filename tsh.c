@@ -180,10 +180,7 @@ void eval(char *cmdline)
     int state = FG;
     sigset_t mask;
     
-    // setup for block/unblock
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGCHLD);
-
+    
     if(bg == 0) {                   // Set state
         state = FG;
     } else if(bg == 1) {
@@ -195,10 +192,16 @@ void eval(char *cmdline)
     }
 
     if (!builtin_cmd(argv)) {       // Not a builtin_cmd
-        
+        // setup for block/unblock
+        sigemptyset(&mask);
+        sigaddset(&mask, SIGCHLD);
         sigprocmask(SIG_BLOCK, &mask, 0); // block child
         
         if((pid = fork()) == 0) {   // In the child
+            
+            setpgid(0, 0);
+            sigprocmask(SIG_UNBLOCK, &mask, 0);
+            
             if(execvp(argv[0], argv) < 0) {
                 printf("%s: Command not found\n", argv[0]);
                 exit(0);
@@ -355,7 +358,7 @@ void do_bgfg(char **argv)
         printf("[%d] (%d) %s", theJob->jid, theJob->pid, theJob->cmdline);
     } else if (!strcmp(argv[0], "fg")) {
         theJob->state = FG;
-        kill(theJob->pid, SIGCONT); // send continue signal
+        kill(-(theJob->pid), SIGCONT); // send continue signal
         waitfg(theJob->pid); // wait for the job to finish before returning
     }
     return;
@@ -387,12 +390,23 @@ void sigchld_handler(int sig)
 {
     int status;
     pid_t pid;
-
+    
     while((pid = waitpid(fgpid(jobs), &status, WNOHANG|WUNTRACED)) > 0) {
+        struct job_t *job = getjobpid(jobs, pid);
         //deletejob(jobs, pid);
+        if (!job) { //maybe not neccesary
+            printf("(%d): No such child", pid);
+            fflush(stdout);
+        }
         if (WIFSTOPPED(status)){
-            sigtstp_handler(20); //signal 20 = SIGTSTP
+            //job->state = ST;
+            //printf("Job [%d] (%d) stopped by signal 20\n",job->jid, pid);
+            //fflush(stdout);
+            sigtstp_handler(20); 
         } else if (WIFSIGNALED(status)){
+            //deletejob(jobs, pid); //Delete job from jobs list
+            //printf("Job [%d] (%d) terminated by signal 2\n", job->jid, pid);
+            //fflush(stdout);
             sigint_handler(-2); //signal -2 terminates from keyboard
         } else if (WIFEXITED(status)){
             deletejob(jobs, pid);
@@ -416,10 +430,12 @@ void sigint_handler(int sig)
     
     if (pid != 0) {
         kill(-pid, SIGINT);
-        if (sig < 0) { // delete job if negative sig
-            printf("Job [%d] (%d) terminated by signal %d\n", jid, pid, -sig); 
+        //printf("killed, debug");
+        //if (sig < 0) { // delete job if negative sig
+            printf("Job [%d] (%d) terminated by signal %d\n", jid, pid, -sig);
+            fflush(stdout);
             deletejob(jobs, pid);
-        }
+        //}
     }
     return;
 }
@@ -436,8 +452,9 @@ void sigtstp_handler(int sig)
     
     if (pid != 0) {
         printf("Job [%d] (%d) stopped by signal %d\n", jid, pid, sig);
+        fflush(stdout);
         getjobpid(jobs, pid)->state = ST;
-        //kill(-pid, SIGTSTP); //looks like it fucks everything up
+        kill(-pid, SIGTSTP); //looks like it fucks everything up
     }
     return;
 }
