@@ -406,7 +406,7 @@ void sigchld_handler(int sig)
             //deletejob(jobs, pid); //Delete job from jobs list
             //printf("Job [%d] (%d) terminated by signal 2\n", job->jid, pid);
             //fflush(stdout);
-            sigint_handler(-2); //signal -2 terminates from keyboard
+            sigint_handler(2); //signal -2 terminates from keyboard
         } else if (WIFEXITED(status)){
             deletejob(jobs, pid); // remove the job from jobs list
         } 
