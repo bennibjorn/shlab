@@ -357,7 +357,7 @@ void do_bgfg(char **argv)
         printf("[%d] (%d) %s", theJob->jid, theJob->pid, theJob->cmdline);
     } else if (!strcmp(argv[0], "fg")) {
         theJob->state = FG;
-        kill(-(theJob->pid), SIGCONT);  // send continue signal
+        kill(theJob->pid, SIGCONT);  // send continue signal
         waitfg(theJob->pid);            // wait for the job to finish before returning
     }
     return;
@@ -390,23 +390,18 @@ void sigchld_handler(int sig)
     int status;
     pid_t pid;
     
-    while((pid = waitpid(fgpid(jobs), &status, WNOHANG|WUNTRACED)) > 0) {
+    while((pid = waitpid(fgpid(jobs), &status, WNOHANG|WUNTRACED)) > 0) { //get the child pid
         struct job_t *job = getjobpid(jobs, pid);
-
+        
         if (!job) {                     //if child doesn't exist
             printf("(%d): No such child", pid);
             fflush(stdout);
         }
+        
         if (WIFSTOPPED(status)){
-            //job->state = ST;
-            //printf("Job [%d] (%d) stopped by signal 20\n",job->jid, pid);
-            //fflush(stdout);
             sigtstp_handler(20); //send sig 20 to sigtstp handler to stop process
         } else if (WIFSIGNALED(status)){
-            //deletejob(jobs, pid); //Delete job from jobs list
-            //printf("Job [%d] (%d) terminated by signal 2\n", job->jid, pid);
-            //fflush(stdout);
-            sigint_handler(2); //signal -2 terminates from keyboard
+            sigint_handler(2); //signal 2 terminates from keyboard
         } else if (WIFEXITED(status)){
             deletejob(jobs, pid); // remove the job from jobs list
         } 
@@ -430,7 +425,7 @@ void sigint_handler(int sig)
     if (pid != 0) {             //if pid exists
         kill(-pid, SIGINT);     //send SIGINT signal
         printf("Job [%d] (%d) terminated by signal %d\n", jid, pid, sig);
-        fflush(stdout);         //debug
+        fflush(stdout);         //for debug purposes
         deletejob(jobs, pid);   //finally delete the job
     }
     return;
